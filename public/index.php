@@ -11,13 +11,39 @@ require_login();
 $search = trim($_GET['q'] ?? '');
 $page   = max(1, (int) ($_GET['page'] ?? 1));
 
-$result = Post::paginate($search, $page);
+// 絞り込み条件（不正値は許可リストで除外）
+$filterTypes    = array_values(array_intersect((array) ($_GET['type'] ?? []), Post::TYPES));
+$filterStatuses = array_values(array_intersect((array) ($_GET['status'] ?? []), Post::STATUSES));
+$filterTagIds   = array_values(array_filter(array_map('intval', (array) ($_GET['tag'] ?? [])), fn ($id) => $id > 0));
+$hasFilter      = count($filterTypes) > 0 || count($filterStatuses) > 0 || count($filterTagIds) > 0;
+
+$result = Post::paginate($search, $page, [
+    'types'    => $filterTypes,
+    'statuses' => $filterStatuses,
+    'tagIds'   => $filterTagIds,
+]);
 $posts      = $result['posts'];
 $total      = $result['total'];
 $totalPages = $result['totalPages'];
 $page       = $result['page'];
 
+$allTags    = Tag::all();
 $tagsByPost = Tag::forPosts(array_column($posts, 'id'));
+
+// ページネーション・状態切替後の遷移で現在の検索/絞り込みを保つためのベースクエリ
+$baseQuery = array_filter([
+    'q'      => $search,
+    'type'   => $filterTypes,
+    'status' => $filterStatuses,
+    'tag'    => $filterTagIds,
+], fn ($v) => $v !== '' && $v !== []);
+
+// 状態切替フォーム（各行）に埋め込む、現在の絞り込みを保持する hidden 群
+ob_start();
+foreach ($filterTypes as $t):    ?><input type="hidden" name="type[]" value="<?= e($t) ?>"><?php endforeach;
+foreach ($filterStatuses as $s): ?><input type="hidden" name="status[]" value="<?= e($s) ?>"><?php endforeach;
+foreach ($filterTagIds as $tid): ?><input type="hidden" name="tag[]" value="<?= e((string) $tid) ?>"><?php endforeach;
+$filterHidden = ob_get_clean();
 
 // 操作完了メッセージ（作成・更新・削除後に表示）
 $flash = $_SESSION['flash'] ?? null;
@@ -39,16 +65,77 @@ require __DIR__ . '/../views/header.php';
   <div class="flash"><?= e($flash) ?></div>
 <?php endif; ?>
 
-<form method="get" class="search-form">
-  <input type="text" name="q" value="<?= e($search) ?>" placeholder="タイトル・本文を検索">
-  <button type="submit" class="btn">検索</button>
-  <?php if ($search !== ''): ?>
-    <a class="btn btn-secondary" href="index.php">クリア</a>
-  <?php endif; ?>
+<form method="get" class="search-form-wrap">
+  <div class="search-form">
+    <input type="text" name="q" value="<?= e($search) ?>" placeholder="タイトル・本文を検索">
+    <button type="submit" class="btn">検索</button>
+    <?php if ($search !== '' || $hasFilter): ?>
+      <a class="btn btn-secondary" href="index.php">クリア</a>
+    <?php endif; ?>
+  </div>
+
+  <details class="filter-details" <?= $hasFilter ? 'open' : '' ?>>
+    <summary class="btn btn-secondary filter-toggle">
+      絞り込み<?php if ($hasFilter): ?><span class="filter-count"><?= count($filterTypes) + count($filterStatuses) + count($filterTagIds) ?></span><?php endif; ?>
+    </summary>
+
+    <div class="filter-panel">
+      <div class="filter-group">
+        <span class="filter-label">種別</span>
+        <div class="tag-chips">
+          <label class="tag-chip">
+            <input type="checkbox" name="type[]" value="blog" <?= in_array('blog', $filterTypes, true) ? 'checked' : '' ?>>
+            <span class="tag-chip-label">ブログ</span>
+          </label>
+          <label class="tag-chip">
+            <input type="checkbox" name="type[]" value="notice" <?= in_array('notice', $filterTypes, true) ? 'checked' : '' ?>>
+            <span class="tag-chip-label">お知らせ</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <span class="filter-label">公開状態</span>
+        <div class="tag-chips">
+          <label class="tag-chip">
+            <input type="checkbox" name="status[]" value="published" <?= in_array('published', $filterStatuses, true) ? 'checked' : '' ?>>
+            <span class="tag-chip-label">公開</span>
+          </label>
+          <label class="tag-chip">
+            <input type="checkbox" name="status[]" value="draft" <?= in_array('draft', $filterStatuses, true) ? 'checked' : '' ?>>
+            <span class="tag-chip-label">下書き</span>
+          </label>
+        </div>
+      </div>
+
+      <?php if (count($allTags) > 0): ?>
+        <div class="filter-group">
+          <span class="filter-label">タグ</span>
+          <div class="tag-chips">
+            <?php foreach ($allTags as $tag): ?>
+              <label class="tag-chip">
+                <input type="checkbox" name="tag[]" value="<?= e((string) $tag['id']) ?>" <?= in_array((int) $tag['id'], $filterTagIds, true) ? 'checked' : '' ?>>
+                <span class="tag-chip-label"><?= e($tag['name']) ?></span>
+              </label>
+            <?php endforeach; ?>
+          </div>
+        </div>
+      <?php endif; ?>
+
+      <div class="filter-actions">
+        <button type="submit" class="btn">絞り込み検索</button>
+        <?php if ($search !== '' || $hasFilter): ?>
+          <a class="btn btn-secondary" href="index.php">クリア</a>
+        <?php endif; ?>
+      </div>
+    </div>
+  </details>
 </form>
 
-<?php if ($search !== ''): ?>
-  <p class="search-result-note">「<?= e($search) ?>」の検索結果: <?= e((string) $total) ?>件</p>
+<?php if ($search !== '' || $hasFilter): ?>
+  <p class="search-result-note">
+    <?php if ($search !== ''): ?>「<?= e($search) ?>」の<?php endif; ?>絞り込み結果: <?= e((string) $total) ?>件
+  </p>
 <?php endif; ?>
 
 <?php if (count($posts) === 0): ?>
@@ -83,7 +170,7 @@ require __DIR__ . '/../views/header.php';
               <?= $post['type'] === 'notice' ? 'お知らせ' : 'ブログ' ?>
             </span>
           </td>
-          <td>
+          <td class="post-title-cell">
             <a href="show.php?id=<?= e((string) $post['id']) ?>"><?= $post['title'] !== '' ? e($post['title']) : '（無題）' ?></a>
             <?php foreach ($tagsByPost[$post['id']] ?? [] as $tagName): ?>
               <span class="badge badge-tag"><?= e($tagName) ?></span>
@@ -95,22 +182,25 @@ require __DIR__ . '/../views/header.php';
             </span>
           </td>
           <td><?= e($post['user_name']) ?></td>
-          <td><?= e($post['updated_at']) ?></td>
+          <td class="post-date-cell"><?= str_replace(' ', '<br>', e($post['updated_at'])) ?></td>
           <td>
             <?php $isPublished = $post['status'] === 'published'; ?>
-            <form method="post" action="toggle_status.php" class="inline-form"
-                  onsubmit="return confirm('<?= $isPublished ? 'この投稿を下書きに戻しますか？' : 'この投稿を公開しますか？' ?>');">
-              <?= csrf_field() ?>
-              <input type="hidden" name="id" value="<?= e((string) $post['id']) ?>">
-              <input type="hidden" name="return_to" value="list">
-              <input type="hidden" name="q" value="<?= e($search) ?>">
-              <input type="hidden" name="page" value="<?= e((string) $page) ?>">
-              <button type="submit" class="btn btn-small <?= $isPublished ? 'btn-secondary' : '' ?>">
-                <?= $isPublished ? '下書きに戻す' : '公開する' ?>
-              </button>
-            </form>
-            <a class="btn btn-small btn-secondary" href="edit.php?id=<?= e((string) $post['id']) ?>">編集</a>
-            <a class="btn btn-small btn-danger" href="delete.php?id=<?= e((string) $post['id']) ?>">削除</a>
+            <div class="post-actions">
+              <form method="post" action="toggle_status.php" class="inline-form"
+                    onsubmit="return confirm('<?= $isPublished ? 'この投稿を下書きに戻しますか？' : 'この投稿を公開しますか？' ?>');">
+                <?= csrf_field() ?>
+                <input type="hidden" name="id" value="<?= e((string) $post['id']) ?>">
+                <input type="hidden" name="return_to" value="list">
+                <input type="hidden" name="q" value="<?= e($search) ?>">
+                <input type="hidden" name="page" value="<?= e((string) $page) ?>">
+                <?= $filterHidden ?>
+                <button type="submit" class="btn btn-small <?= $isPublished ? 'btn-secondary' : '' ?>">
+                  <?= $isPublished ? '下書きに戻す' : '公開する' ?>
+                </button>
+              </form>
+              <a class="btn btn-small btn-secondary" href="edit.php?id=<?= e((string) $post['id']) ?>">編集</a>
+              <a class="btn btn-small btn-danger" href="delete.php?id=<?= e((string) $post['id']) ?>">削除</a>
+            </div>
           </td>
         </tr>
       <?php endforeach; ?>
@@ -120,7 +210,7 @@ require __DIR__ . '/../views/header.php';
   <?php if ($totalPages > 1): ?>
     <nav class="pagination">
       <?php for ($p = 1; $p <= $totalPages; $p++): ?>
-        <?php $query = http_build_query(array_filter(['q' => $search, 'page' => $p])); ?>
+        <?php $query = http_build_query(array_merge($baseQuery, ['page' => $p])); ?>
         <?php if ($p === $page): ?>
           <span class="page-link page-current"><?= e((string) $p) ?></span>
         <?php else: ?>

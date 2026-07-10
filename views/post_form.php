@@ -89,19 +89,20 @@ foreach ($existingImages as $image) {
 
     <div class="form-group">
       <label for="body">本文</label>
-      <div class="editor-split">
-        <div class="editor-pane">
-          <textarea id="body" name="body"><?= e($input['body'] ?? '') ?></textarea>
-          <div class="dropzone dropzone-compact" id="body-dropzone">
-            <p class="dropzone-text">本文に入れる画像をここにドロップ（またはクリックして選択）<br>
-              アップロードと同時に <code>[image:ID]</code> がカーソル位置に挿入されます</p>
-            <p class="upload-status" id="upload-status" hidden></p>
-          </div>
+    </div>
+
+    <div class="editor-split">
+      <div>
+        <textarea id="body" name="body"><?= e($input['body'] ?? '') ?></textarea>
+        <div class="dropzone dropzone-compact" id="body-dropzone">
+          <p class="dropzone-text">本文に入れる画像をここにドロップ（またはクリックして選択）<br>
+            アップロードと同時に <code>[image:ID]</code> がカーソル位置に挿入されます</p>
+          <p class="upload-status" id="upload-status" hidden></p>
         </div>
-        <div class="editor-pane">
-          <div class="preview-label">プレビュー</div>
-          <div class="body-preview detail-body" id="body-preview"></div>
-        </div>
+      </div>
+      <div>
+        <div class="preview-label">プレビュー</div>
+        <div class="body-preview detail-body" id="body-preview"></div>
       </div>
     </div>
 

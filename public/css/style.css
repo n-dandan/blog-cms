@@ -74,9 +74,37 @@ main { padding: 24px 16px 48px; }
   border-bottom: 1px solid #e4e7eb;
   text-align: left;
   font-size: 0.95rem;
+  vertical-align: middle;
+  /* 列が圧縮されたときに1文字ずつ縦に折れるのを防ぐ（タイトル列のみ折り返しを許可） */
+  white-space: nowrap;
+}
+.post-table td.post-title-cell {
+  white-space: normal;
+  min-width: 180px;
+  width: 100%;
+}
+/* 日時は「日付」「時刻」で明示的に2行にし、タイトル列に幅を譲る */
+.post-table td.post-date-cell {
+  color: #616e7c;
+  font-size: 0.88rem;
+  line-height: 1.5;
 }
 .post-table th { background: #eef1f5; }
 .post-table tr:last-child td { border-bottom: none; }
+
+/* 一覧の操作ボタン（縦積み・幅を揃える） */
+.post-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.post-actions .btn {
+  font-size: 12px;
+  white-space: nowrap;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+}
 
 /* バッジ */
 .badge {
@@ -84,6 +112,7 @@ main { padding: 24px 16px 48px; }
   padding: 2px 10px;
   border-radius: 999px;
   font-size: 0.78rem;
+  white-space: nowrap; /* バッジ内のテキストは折り返さない */
 }
 .badge-blog { background: #dbeafe; color: #1d4ed8; }
 .badge-notice { background: #fef3c7; color: #b45309; }
@@ -108,7 +137,7 @@ main { padding: 24px 16px 48px; }
 .form-group input[type="email"],
 .form-group input[type="password"],
 .form-group select,
-.form-group textarea {
+textarea {
   width: 100%;
   padding: 9px 10px;
   border: 1px solid #cbd2d9;
@@ -116,7 +145,7 @@ main { padding: 24px 16px 48px; }
   font-size: 1rem;
   font-family: inherit;
 }
-.form-group textarea { min-height: 220px; resize: vertical; }
+textarea { min-height: 220px; resize: vertical; }
 .form-actions { display: flex; gap: 10px; margin-top: 20px; }
 
 /* メッセージ */
@@ -169,6 +198,7 @@ main { padding: 24px 16px 48px; }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-top: 24px;
   margin-bottom: 16px;
 }
 .page-head h1 { font-size: 1.4rem; margin: 0; }
@@ -193,6 +223,65 @@ main { padding: 24px 16px 48px; }
   font-size: 0.95rem;
 }
 .search-result-note { color: #616e7c; font-size: 0.9rem; }
+
+/* 絞り込み（検索フォーム内の折りたたみパネル） */
+.search-form-wrap { margin-bottom: 16px; }
+.search-form-wrap .search-form { margin-bottom: 8px; }
+.filter-details { margin-bottom: 0; }
+/* summary をボタン形状にし、標準の三角マーカーを消す */
+.filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  list-style: none;
+  cursor: pointer;
+}
+.filter-toggle::-webkit-details-marker { display: none; }
+.filter-toggle::before {
+  content: "▸";
+  font-size: 0.8em;
+}
+.filter-details[open] .filter-toggle::before { content: "▾"; }
+.filter-count {
+  display: inline-block;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #fff;
+  color: #2563eb;
+  font-size: 0.75rem;
+  font-weight: bold;
+  line-height: 18px;
+  text-align: center;
+}
+.filter-panel {
+  margin-top: 10px;
+  padding: 16px;
+  border: 1px solid #e4e7eb;
+  border-radius: 8px;
+  background: #fafbfc;
+}
+.filter-group {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.filter-label {
+  flex-shrink: 0;
+  width: 5em;
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: #52606d;
+}
+.filter-group .tag-chips { flex: 1; }
+.filter-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid #e4e7eb;
+}
 
 /* ページネーション */
 .pagination {
@@ -369,15 +458,17 @@ main { padding: 24px 16px 48px; }
   gap: 16px;
   align-items: stretch;
 }
-.editor-pane { flex: 1; min-width: 0; }
+.editor-split > div { flex: 1; min-width: 0; }
+/* 本文入力欄はプレビュー（最大560px）と高さが釣り合うように */
+.editor-split textarea { min-height: 460px; }
 .preview-label {
   font-size: 0.8rem;
   color: #7b8794;
   margin-bottom: 4px;
 }
 .body-preview {
-  min-height: 220px;
-  height: 100%;
+  min-height: 320px;
+  max-height: 560px; /* 長い記事でもプレビュー側だけが延々と伸びないよう内部スクロールに */
   border: 1px solid #e4e7eb;
   border-radius: 6px;
   padding: 10px 12px;

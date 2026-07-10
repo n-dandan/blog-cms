@@ -28,8 +28,12 @@ if (($_POST['return_to'] ?? '') === 'detail') {
     redirect('show.php?id=' . $id);
 }
 
+// 一覧に戻る際、検索語・絞り込み条件・ページを保持する（値は許可リスト等で検証してから使う）
 $query = http_build_query(array_filter([
-    'q'    => $_POST['q'] ?? '',
-    'page' => $_POST['page'] ?? '',
-]));
+    'q'      => $_POST['q'] ?? '',
+    'type'   => array_values(array_intersect((array) ($_POST['type'] ?? []), Post::TYPES)),
+    'status' => array_values(array_intersect((array) ($_POST['status'] ?? []), Post::STATUSES)),
+    'tag'    => array_values(array_filter(array_map('intval', (array) ($_POST['tag'] ?? [])), fn ($id) => $id > 0)),
+    'page'   => $_POST['page'] ?? '',
+], fn ($v) => $v !== '' && $v !== []));
 redirect('index.php' . ($query !== '' ? '?' . $query : ''));

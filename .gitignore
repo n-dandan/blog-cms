@@ -10,3 +10,6 @@ docs/
 # README 以外の Markdown（仕様書など）
 *.md
 !README.md
+
+# さくらへのアップロード用フォルダ（DB接続情報を含む config.php などがあるため公開しない）
+/blog_cms/

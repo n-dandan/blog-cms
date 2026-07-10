@@ -11,20 +11,60 @@ class Post
 
     public const PER_PAGE = 10;
 
-    // 管理画面一覧用：検索・ページネーション付き取得（下書きも含む、新しい順）
+    // 管理画面一覧用：検索・絞り込み・ページネーション付き取得（下書きも含む、新しい順）
+    // $filters: ['types' => [...], 'statuses' => [...], 'tagIds' => [...]]（各グループ内はOR、グループ間はAND）
     // 戻り値: ['posts' => [...], 'total' => int, 'totalPages' => int, 'page' => int]
-    public static function paginate(string $search, int $page): array
+    public static function paginate(string $search, int $page, array $filters = []): array
     {
         $perPage = self::PER_PAGE;
 
-        // エミュレーション無効時は同名プレースホルダを再利用できないため別名にする
-        $where = '';
+        // エミュレーション無効時は同名プレースホルダを再利用できないため個別名にする
+        $conditions = [];
         $params = [];
+
         if ($search !== '') {
-            $where = 'WHERE p.title LIKE :search_title OR p.body LIKE :search_body';
+            $conditions[] = '(p.title LIKE :search_title OR p.body LIKE :search_body)';
             $params[':search_title'] = '%' . $search . '%';
             $params[':search_body']  = '%' . $search . '%';
         }
+
+        // 種別で絞り込み（不正値は許可リストで除外）
+        $types = array_values(array_intersect($filters['types'] ?? [], self::TYPES));
+        if (count($types) > 0) {
+            $ph = [];
+            foreach ($types as $i => $t) {
+                $ph[] = ":type{$i}";
+                $params[":type{$i}"] = $t;
+            }
+            $conditions[] = 'p.type IN (' . implode(',', $ph) . ')';
+        }
+
+        // 公開状態で絞り込み
+        $statuses = array_values(array_intersect($filters['statuses'] ?? [], self::STATUSES));
+        if (count($statuses) > 0) {
+            $ph = [];
+            foreach ($statuses as $i => $s) {
+                $ph[] = ":status{$i}";
+                $params[":status{$i}"] = $s;
+            }
+            $conditions[] = 'p.status IN (' . implode(',', $ph) . ')';
+        }
+
+        // タグで絞り込み（選択したタグのいずれかを持つ投稿）
+        $tagIds = array_values(array_filter(
+            array_map('intval', $filters['tagIds'] ?? []),
+            fn ($id) => $id > 0
+        ));
+        if (count($tagIds) > 0) {
+            $ph = [];
+            foreach (array_unique($tagIds) as $i => $tid) {
+                $ph[] = ":tag{$i}";
+                $params[":tag{$i}"] = $tid;
+            }
+            $conditions[] = 'p.id IN (SELECT pt.post_id FROM post_tags pt WHERE pt.tag_id IN (' . implode(',', $ph) . '))';
+        }
+
+        $where = count($conditions) > 0 ? 'WHERE ' . implode(' AND ', $conditions) : '';
 
         $countStmt = db()->prepare("SELECT COUNT(*) FROM posts p {$where}");
         $countStmt->execute($params);

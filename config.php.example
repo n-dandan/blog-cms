@@ -1,0 +1,16 @@
+<?php
+// DB接続情報などの設定ファイルの雛形。
+// このファイルを config.php にコピーし、自分の環境に合わせて値を書き換えて使う。
+//   cp config.php.example config.php
+// config.php 自体は .gitignore で除外している（DB接続情報を公開しないため）。
+
+return [
+    'db' => [
+        'host'     => '127.0.0.1',
+        'port'     => 3306,
+        'dbname'   => 'blog_cms',
+        'user'     => 'root',
+        'password' => '',
+        'charset'  => 'utf8mb4',
+    ],
+];

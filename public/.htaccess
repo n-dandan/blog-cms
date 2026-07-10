@@ -1,0 +1,4 @@
+# /api/posts と /api/posts/{id} を posts.php にルーティング
+RewriteEngine On
+RewriteRule ^api/posts/?$ api/posts.php [L,QSA]
+RewriteRule ^api/posts/([0-9]+)/?$ api/posts.php?id=$1 [L,QSA]

@@ -1,0 +1,12 @@
+# OS が生成するファイル
+.DS_Store
+
+# 設定ファイル（DB接続情報を含むため公開しない。config.php.example をコピーして作成する）
+/config.php
+
+# ドキュメント（実装プランのログなど。公開するのは README.md のみ）
+docs/
+
+# README 以外の Markdown（仕様書など）
+*.md
+!README.md

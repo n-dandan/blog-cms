@@ -1,0 +1,12 @@
+# 本来 public/ をドキュメントルートにする想定だが、
+# XAMPPのhtdocs配下に置くため、公開してはいけないファイルへの
+# 直接アクセスをここで禁止する。
+
+# 設定ファイル・仕様書へのアクセス禁止
+<FilesMatch "^(config\.php|blog-cms-spec\.md)$">
+    Require all denied
+</FilesMatch>
+
+# src / views / sql ディレクトリへのアクセス禁止
+RewriteEngine On
+RewriteRule ^(src|views|sql)(/|$) - [F,L]
